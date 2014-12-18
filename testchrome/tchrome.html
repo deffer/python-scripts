@@ -1,0 +1,44 @@
+<html>
+<head>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.6.4/jquery.min.js" type="text/javascript"></script>
+<script type="text/javascript">
+	function setimage(d){
+		$('#jsonlabel').text('')
+		$('img').attr('src', d)		
+	}
+	
+	function calljson(d){
+		setimage('england.png')
+		
+		/*$.getJSON(d, function(data) {
+			$('#jsonlabel').text(data.msg)
+		});*/
+		var jqXHRv = $.ajax({
+		type: 'GET',
+		url:d,
+		accepts:{"*":"application/json"},
+		dataType:"*"}).		
+		always(function(jqXHR, textStatus){
+			//console.log("Respose complete, status: "+textStatus+" loc:"+jqXHR.getResponseHeader("Location"));			
+		}).
+		done(function(res, textStatus){
+			console.log("Response with status:"+textStatus);
+			$('#jsonlabel').text(res.msg)
+		}).
+		fail(function(){
+			alert('error');
+		})	
+	}
+</script>
+</head>
+<body>
+	<div>
+		<span id='jsonlabel'></span>
+		<button value="json" onclick="calljson('doc/17')">json</button>
+	</div>
+	<div>
+		<img src="england.png"/>
+		<button value="img" onclick="setimage('doc/17')">image</button>
+	</div>
+</body>
+</html>

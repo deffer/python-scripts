@@ -1,0 +1,171 @@
+------------ Chrome --------------
+JSON GET /idcards/idcard/20711278708902 HTTP/1.1
+Host: iam.auckland.ac.nz
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (Windows NT 5.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.202 Safari/535.1
+Accept: application/json
+Referer: https://iam.auckland.ac.nz/idcards/app/IdCards.html
+Accept-Encoding: gzip,deflate,sdch
+Accept-Language: en-US,en;q=0.8
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3
+Cookie: webroute=server.idpappprd03; _idp_session="..."; JSESSIONID=14k727xe73zm4.idpappprd03; _shibsession_64656...564=_328...2b83
+
+Response: HTTP/1.1 200 OK
+Date: Tue, 18 Oct 2011 09:01:28 GMT
+Server: Server: Jetty(6.0.x)
+Content-Type: application/json
+Keep-Alive: timeout=15, max=99
+Connection: Keep-Alive
+Transfer-Encoding: chunked
+
+
+Request: GET /idcards/idcard/20711278708902 HTTP/1.1
+Host: iam.auckland.ac.nz
+Connection: keep-alive
+User-Agent: Mozilla/5.0 (Windows NT 5.1) AppleWebKit/535.1 (KHTML, like Gecko) Chrome/14.0.835.202 Safari/535.1
+Accept: */*
+Referer: https://iam.auckland.ac.nz/idcards/app/IdCards.html
+Accept-Encoding: gzip,deflate,sdch
+Accept-Language: en-US,en;q=0.8
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3
+Cookie: 
+
+Response: HTTP/1.1 200 OK
+Date: Tue, 18 Oct 2011 09:01:29 GMT
+Server: Server: Jetty(6.0.x)
+Content-Type: image/jpeg
+Content-Length: 55162
+Cache-Control: max-age=3600
+Expires: Tue, 18 Oct 2011 10:01:29 GMT
+Keep-Alive: timeout=15, max=99
+Connection: Keep-Alive
+
+CACHE:
+Date: Tue, 18 Oct 2011 11:18:57 GMT
+Server: Server: Jetty(6.0.x)
+Content-Type: image/jpeg
+Content-Length: 55162
+Cache-Control: max-age=3600
+Expires: Tue, 18 Oct 2011 12:18:56 GMT
+
+
+---------- Firefox -------------------------
+REQUEST Headers:
+GET /idcards/idcard/20711278708902 HTTP/1.1
+Host: iam.auckland.ac.nz
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1
+Accept: application/json
+Accept-Language: en-gb,en;q=0.5
+Accept-Encoding: gzip, deflate
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Connection: keep-alive
+Referer: https://iam.auckland.ac.nz/idcards/app/IdCards.html
+Cookie:
+
+RESPONSE Header:
+HTTP/1.1 200 OK
+Date: Tue, 18 Oct 2011 10:12:04 GMT
+Server: Server: Jetty(6.0.x)
+Content-Type: application/json
+Keep-Alive: timeout=15, max=88
+Connection: Keep-Alive
+Transfer-Encoding: chunked
+
+
+REQUEST Headers: GET /idcards/idcard/20711278708902 HTTP/1.1
+Host: iam.auckland.ac.nz
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1
+Accept: image/png,image/*;q=0.8,*/*;q=0.5
+Accept-Language: en-gb,en;q=0.5
+Accept-Encoding: gzip, deflate
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Connection: keep-alive
+Referer: https://iam.auckland.ac.nz/idcards/app/IdCards.html
+Cookies:
+
+RESPONSE Headers: HTTP/1.1 200 OK
+Date: Tue, 18 Oct 2011 10:12:07 GMT
+Server: Server: Jetty(6.0.x)
+Content-Type: image/png
+Content-Length: 74556
+Keep-Alive: timeout=15, max=94
+Connection: Keep-Alive
+
+CACHE of 2nd JSON request:
+Last Modified	Tue Oct 18 2011 23:13:10 GMT+1300 (New Zealand Daylight Time)
+Last Fetched	Tue Oct 18 2011 23:13:10 GMT+1300 (New Zealand Daylight Time)
+Expires	Thu Jan 01 1970 13:00:00 GMT+1300 (New Zealand Daylight Time)
+Data Size	74556
+Fetch Count	13
+Device	disk
+
+CACHE of 2nd image request:
+Last Modified	Tue Oct 18 2011 23:13:10 GMT+1300 (New Zealand Daylight Time)
+Last Fetched	Tue Oct 18 2011 23:13:10 GMT+1300 (New Zealand Daylight Time)
+Expires	Thu Jan 01 1970 13:00:00 GMT+1300 (New Zealand Daylight Time)
+Data Size	74556
+Fetch Count	13
+Device	disk
+----- Firefox CACHING -------------
+Response:   HTTP/1.0 200 OK
+Date: Tue, 18 Oct 2011 11:04:43 GMT
+Server: WSGIServer/0.1 Python/2.7.1
+Content-Length: 26
+Content-Type: application/json
+
+Request Headers   GET /doc/17 HTTP/1.1
+Host: 192.168.1.5:8080
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1
+Accept: application/json
+Accept-Language: en-gb,en;q=0.5
+Accept-Encoding: gzip, deflate
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Connection: keep-alive
+X-Requested-With: XMLHttpRequest
+Referer: http://192.168.1.5:8080/app
+
+
+Response Headers:   HTTP/1.0 200 OK
+Date: Tue, 18 Oct 2011 11:05:00 GMT
+Server: WSGIServer/0.1 Python/2.7.1
+Last-Modified: Sat, 27 Nov 2010 21:23:20 GMT
+Content-Length: 930
+Content-Type: image/png
+
+Request Headers:     GET /doc/17 HTTP/1.1
+Host: 192.168.1.5:8080
+User-Agent: Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1
+Accept: image/png,image/*;q=0.8,*/*;q=0.5
+Accept-Language: en-gb,en;q=0.5
+Accept-Encoding: gzip, deflate
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Connection: keep-alive
+Referer: http://192.168.1.5:8080/app
+Pragma: no-cache
+Cache-Control: no-cache
+
+--- AND NOW IT TAKES FROM CACHE --------
+Response Headers:
+Date	Tue, 18 Oct 2011 11:05:00 GMT
+Server	WSGIServer/0.1 Python/2.7.1
+Last-Modified	Sat, 27 Nov 2010 21:23:20 GMT
+Content-Length	930
+Content-Type	image/png
+
+Request Headers:  Host	192.168.1.5:8080
+User-Agent	Mozilla/5.0 (Windows NT 5.1; rv:7.0.1) Gecko/20100101 Firefox/7.0.1
+Accept	application/json
+Accept-Language	en-gb,en;q=0.5
+Accept-Encoding	gzip, deflate
+Accept-Charset	ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Connection	keep-alive
+X-Requested-With	XMLHttpRequest
+Referer	http://192.168.1.5:8080/app
+
+Cache:
+Last Modified	Wed Oct 19 2011 00:05:00 GMT+1300 (New Zealand Daylight Time)
+Last Fetched	Wed Oct 19 2011 00:05:00 GMT+1300 (New Zealand Daylight Time)
+Expires	Sun Nov 20 2011 11:03:10 GMT+1300 (New Zealand Daylight Time)
+Data Size	930
+Fetch Count	2
+Device	disk
