@@ -1,0 +1,13 @@
+#available tags for MarkThis!
+#this is comma separated file, see format below
+#name   , background_color, key
+booktitle ,,B
+volume    ,                 , V
+notes     ,,N
+journal   , #15aa15         , J
+location  , #cc00cc         , L
+date      , #cccc00         , D
+author    , #ff0000         , A
+title     , #00ff00         , T
+pages     ,,P
+editor    ,,E
