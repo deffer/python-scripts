@@ -1,0 +1,25 @@
+$.ajax({
+url: ‘Url of page you want to load here’
+success: function(data){
+processData(data);
+};
+});
+function processData(data){
+$xmlData = $(data);
+alert($xmlData);
+});
+
+
+$(this).bind("myEventName",function(){
+alert("myEventName triggered");
+});
+
+<a id='link'>Click me</a>
+$('#link').toggle(function(){
+//handler 1
+alert('Handler 1');
+},function(){
+//handler 2
+alert('Handler 2');
+});
+
