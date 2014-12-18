@@ -1,33 +1,30 @@
 function openIconDialog(event){
-	console.log("in open dialog: "+event.clientY)
-	el = document.getElementById("iconDialog")	
-	if (el.style.display==null){
-		// not working?
-		return	
-	}
-	el.style.display=null	
-	el.style.left=event.clientX+5
-	el.style.top=event.clientY+5
-	document.body.onclick=onBodyClick
+	console.log("in open dialog: "+event.clientX+":"+event.clientY)
+	el = $("#iconDialog")	
 	
-	var table = el.getElementsByTagName("table")[0];
+	el.css("display", "").css("left", event.clientX+5).css("top", event.clientY+5);
+	$("body").click(onBodyClick);
+
+	if (!el.data("loaded")){
+
+		var table = el.find("table");
 	
-	for (var i in allicons){
-		iconrow = allicons[i]
-		var tr=document.createElement("tr")
-		var td=document.createElement("td")
-		tr.appendChild(td)
-		for (var j in iconrow){
-			icon = iconrow[j]
-			var image = new Image()
-			image.type="image/x-png";
-			image.style.margin = "0px 0px 0px 0px";
-			image.src="/usericons/32/"+icon;
-			image.onclick=function (){selectIcon(this);}.bind(icon)
-			td.appendChild(image)
+		for (var i in allicons){
+			iconrow = allicons[i]
+			var tr = $("<tr/>")
+			var td = $("<td/>")
+			tr.append(td)
+			for (var j in iconrow){
+				icon = iconrow[j]
+				var image = $("<img/>")
+				image.attr("type", "image/x-png").css("margin", "0px 0px 0px 0px").attr("src", "/usericons/32/"+icon);
+				image.click(function (){selectIcon(this);}.bind(icon));
+				td.append(image)
+			}
+			table.append(tr);
 		}
-		table.appendChild(tr);
-	} 
+		el.data("loaded", true);
+	}
 	/*	<tr>
 	%for icon in icons:
 		<td><img type="image/x-png" style="margin: 0px 0px 0px 0px;" valign="bottom" src="/usericons/32/{{icon}}" 
@@ -55,9 +52,10 @@ function onBodyClick(event){
 	if (x>divX && x<(divX+width) && y>divY && y<(divY+height)){
 
 	}else{
-		document.body.onclick=null
+		//document.body.onclick=null
+		$("body").click(onBodyClick);
 		el.style.display="none"
-		console.log("shut down")
+		//console.log("shut down")
 	}
 }
 
@@ -81,104 +79,192 @@ function hideUserName(){
 }
 
 function refreshContactlistUser(user, status, createWhenMissing){
-	el = document.getElementById("contactListUser"+user.id);
-	if (el==null){
+	
+	var userimage;
+	var li = $("#contactListUser"+user.id);
+	if (li.length==0){
 		if (createWhenMissing){
-			var ul = document.getElementById("contactList");
-			el = document.createElement("li");
-			el.id = "contactListUser"+user.id;
-			el.style.position="relative";
-			ul.appendChild(el); 
+			var ul = $("#contactList");
+			li = $("<li/>").attr({"id":"contactListUser"+user.id}).css("position", "relative");
+			ul.append(li);
+			
+			userimage = $("<img/>").addClass("contactlistuser");
+			userimage.attr("src", "/usericons/32/"+user.icon+"_32.png");
+			userimage.click(function (){requestConversation(this)}.bind(user.id));
+			console.log("binding contact list user "+user.name+" to request conversation event");
+			li.append(userimage)			
 		}else{
 			return
 		}
+	}else{
+		userimage = li.find('img.contactlistuser').attr("src", "/usericons/32/"+user.icon+"_32.png");
 	}
-	el.innerHTML = "";
+
 	
-	var image = new Image()
-	image.className="contactlistuser";
-	image.src="/usericons/32/"+user.icon+"_32.png";
-	console.log("binding user "+user.name+"("+user.id+" as "+(typeof user.id)+") to request conversation event");
-	image.onclick=(function (){request_conversation(this)}).bind(user.id)
-	el.appendChild(image)
+	console.log(status)
+	var statusimage = li.find('img.imguserstatus');
 	
-	var iconStatus = null
-	var tooltip = null
-	if (status=='havingTalk') {
-		iconStatus="/usericons/actions/arrow_medium_lower_left.png";
-		tooltip="You are talking with this person";
-	}
-	if (status=='requestingTalk') {
-		iconStatus="/usericons/actions/volume_loud.png";
-		tooltip="This person wants to talk to you";
-	}
-	
-	if (iconStatus){		
-		image = new Image()
-		image.className="imguserstatus";
-		image.src=iconStatus;
-		image.onclick=(function (){request_conversation(this)}).bind(user.id)
-		image.title=tooltip;
-		el.appendChild(image)
+	if (status){			
+		if (statusimage.length==0){
+			statusimage = $("<img/>").addClass("imguserstatus");
+			statusimage.attr({"src":status.iconStatus, "title":status.tooltip});
+			userimage.attr({"title":status.tooltip});	
+			if (status==REQUESTING_TALK){
+				statusimage.data("blinking", true);
+				var dd = user.id
+				setTimeout(function (){blinking(dd)}, 500);
+			}
+			statusimage.click(function (){requestConversation(this)}.bind(user.id))
+			li.append(statusimage)
+		}else if (status.iconStatus != statusimage.attr("src")){
+			// start/stop blinking
+			if (status==REQUESTING_TALK){
+				statusimage.data("blinking", true);
+				blinking(user.id);
+			}else if (statusimage.attr("src")==REQUESTING_TALK.iconStatus){
+				console.log("cancelling blinking")
+				statusimage.data("blinking",false);
+				statusimage.css("display","");
+			}
+			statusimage.attr({"src":status.iconStatus, "title":status.tooltip});
+			userimage.attr({"title":status.tooltip});
+		}
+	}else {
+		statusimage.data("blinking",false)
+		statusimage.remove();
+		userimage.attr({"title":""});
 	}
 		
-	if (user.online=="False"){		
-		image = new Image()
-		image.className="imguserstatustop";
-		image.src="/usericons/actions/remove.png";
-		image.onclick=(function (){request_conversation(this)}).bind(user.id)
-		el.appendChild(image)
+	var statusimagetop = li.find('img.imguserstatustop');
+	if (user.online=="False" || user.online=="false"){
+		if (statusimagetop.length==0){
+			statusimagetop = $("<img/>").addClass("imguserstatustop");
+			statusimagetop.attr({"src":"/usericons/actions/remove.png"});
+			statusimagetop.click(function (){requestConversation(this)}.bind(user.id));
+			li.append(statusimagetop)
+		}
+	}else{
+		statusimagetop.remove();		
 	}
 	
-	var span = document.createElement("span");	
-	span.innerHTML = user.name;
-	el.appendChild(span);
+	var span = li.find('span');
+	if (span.length==0){
+		span = $("<span/>").html(user.name);
+		li.append(span);
+	}else{
+		span.html(user.name);
+	}	
 }
 
-function updateContactList(requests){
-	for (var i in requests){
-		var userid = requests[i] 
-		el = document.getElementById("contactListUser"+userid);
-		user = getUser(userid)
-		if (el==null && user==null){
-			// TODO request updating user in contact list
-			return
-		}	
+function blinking(userid){
+	//console.log('blinking called')
+	var li = contactListElement.find("#contactListUser"+userid);
+	if (li.length==0){
+		//console.log("#contactListUser"+userid+"  is not found")
+		return
+	}
+	var statusimage = li.find('img.imguserstatus');
+	/*if (statusimage.length==0){
+		console.log("#img.imguserstatus for "+userid+"  is not found")
+	}*/
+	if (statusimage.data("blinking")){
+		statusimage.toggle();
+		setTimeout(function(){blinking(userid)}, 500);
+	}/*else{
+		console.log("#img.imguserstatus for "+userid+"  is not blinking")
+	}*/
+}
+
+function updateContactList(requests, clusers){
+	// update users with request flag
+	for (var i in clusers){
+		userstatus = null;
+		cluser = clusers[i]
+		//console.log(cluser.id)
+		//console.log(requests)
+		if($.inArray(cluser.id, requests) > -1){
+			userstatus = REQUESTING_TALK			
+		}else if (havingTalkWith(cluser.id)){
+			userstatus = HAVING_TALK
+		}
+		var user = getUser(cluser.id)
+		if (!user){
+			console.log("    creating local user "+cluser.name)
+			user = new User(cluser.id, cluser.icon,  cluser.name, "", ""+cluser.online)			
+			users.push(user)
+		}else{
+			user.name = cluser.name;
+			user.icon = cluser.icon;
+			user.online = ""+cluser.online;
+		}
+		refreshContactlistUser(user, userstatus, true)
+		user.status = userstatus
+	}
 		
-		refreshContactlistUser(user, "requestingTalk", true)
-		
+}
+
+function updateConversation(messages, talk){	
+	var el = $("#historyTable"+talk.id)
+	if (el.length==0){
+		console.log("INCONSTISTENCY: cant find history table for conversation "+key);
+		return;
 	}
 	
-}
+	// add messages to table
+	for (i in messages){
+		var msg = messages[i]
+		var tr = $("<tr/>").attr({"id":"historyEntry"+msg.id});
+
+		if (msg.type=='n'){
+			var td = $("<td/>").attr("valign","top").css("font-weight","bold")
+				.html(msg.userName+":");
+			tr.append(td)
+		
+			td = $("<td/>").append($("<div/>").addClass("messagecell").html(
+				msg.text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g, '<br>')));
+		}else if (msg.type=='s' && msg.userid!=currentUser.id){
+			// td.css("color", "red").css("font-style","italic")
+			//var statusEl = el.find("#statusMsg"+talk.id);
+			var statusEl = $("#statusMsg"+talk.id);
+			if (statusEl.length==0){
+				console.log("can't find element statusMsg"+talk.id);
+			}
+			if (msg.text.indexOf("DECLINED")>=0){
+				console.log("DECLINED");
+				statusEl.css("color", "red").css("font-style","italic");
+				statusEl.text("User declined your request for conversation");
+			}else if (msg.text.indexOf("ACCEPTED")>=0){
+				console.log("ACCEPTED");
+				statusEl.text("");
+			}else if (msg.text.indexOf("CLOSED")>=0){
+				console.log("CLOSED");
+				statusEl.css("color", "red").css("font-style","italic");
+				statusEl.text("User closed this conversation");
+			}else{
+				console.log("Unknown status message: "+msg.text);
+			}			
+		}
+		tr.append(td)
+		el.append(tr);
+		
+		talk.lastMsgId = msg.id
+		console.log("message added "+msg.text)			
+	}
+	el = $("#messagesBoard"+talk.id);
+	el[0].scrollTop = el[0].scrollHeight;	
+} 
+
 
 function updateConversations(messages){
-	for (var j in messages){
-		var key = j
-		var talkMessages = messages[j]			
-		// add messages to table
-		el = $("#historyTable"+key)
-		if (el){
-			for (var i in talkMessages){
-				var msg = talkMessages[i]
-				var tr = $("<tr/>").attr({"id":"historyEntry"+msg.id});
-
-				var td = $("<td/>").attr("valign","top").css("font-weight","bold")
-				.html(msg.userName+":");
-				tr.append(td)
-
-				td = $("<td/>").html(msg.text);				
-				tr.append(td)
-				el.append(tr);
-				console.log("message added "+msg.text)
-			}
-		
-			el = $("#messagesBoard"+key)
-			if (el){
-				el[0].scrollTop = el[0].scrollHeight;
-			}			
-		}else{
-			console.log("INCONSTISTENCY: cant find history table for conversation "+key)
+	for (var key in messages){		
+		var talk = conversations[key]
+		if (!talk){
+			console.log("INCONSTISTENCY: cant find conversation object "+key);
+			return;
 		}
+		
+		var talkMessages = messages[key]
+		updateConversation(talkMessages, talk);		
 	}
 		
 }
@@ -187,11 +273,18 @@ function getUser(id){
 	for (i in users){
 		user = users[i]
 		if (user.id==id){
-			console.log("    found partner "+user.name+" in local data")
+			//console.log("    found user "+user.name+" in local data")
 			return user
-		}else{
-			//console.log("    rejecting "+user.id+"("+user.name+") as not equal to "+id);
 		}
 	}
 	//console.log("_____ unable to find user for id "+id+",  size of users is "+users.length)
+}
+
+function havingTalkWith(partnerid){
+	for (i in conversations){
+		c = conversations[i]
+		if (c.partner ==  partnerid){
+			return true
+		}
+	}
 }

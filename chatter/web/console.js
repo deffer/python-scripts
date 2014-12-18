@@ -3,9 +3,9 @@
  */
 
 // for IE6
-if (!window.XMLHttpRequest){
+/*if (!window.XMLHttpRequest){
 	window.XMLHttpRequest = function() { return new ActiveXObject('Microsoft.XMLHTTP')} 
-}
+}*/
 
 
 // for Opera

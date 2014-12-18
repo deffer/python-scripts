@@ -3,19 +3,37 @@ Created on Nov 16, 2010
 
 @author: clair
 '''
-import bottle
+
 import re
 import time
 import json
+import bottle
 
 from collections import defaultdict
 from bottle import route, run, send_file, request, response, view, redirect, static_file, template
+from model import UserSession, Conversation, Message
+
+import dbaccess
+import model
 
 bottle.debug(True)
-bottle.TEMPLATE_PATH.insert(0,'../web/')
+bottle.TEMPLATE_PATH.insert(0,'web/')
+alicebot=None
 
-defaultUserNames = ['Alice', 'Bob', 'Eve','Helen', 'Boris']
-defaultUserIcons = {'Alice':'geisha', 'Bob':'guerrero_chino', 'Eve':'diabla', 'Helen':'estilista', 'Boris':'hiphopper'}
+def getAliceBot():
+    global alicebot
+    if alicebot:
+        return alicebot;
+    
+    print 'initializing ALICE...'
+    import aiml
+    alicebot = aiml.Kernel()
+    alicebot.learn("data/alice/std-startup.xml")
+    alicebot.respond("load aiml b")
+    print '            ... DONE!'
+    return alicebot
+
+
 allUserIcons = [['afro_32.png','alien_32.png','anciano_32.png','artista_32.png','astronauta_32.png','barbaman_32.png','bombero_32.png','boxeador_32.png'],
                 ['bruce_lee_32.png','caradebolsa_32.png','chavo_32.png','cientifica_32.png','cientifico_loco_32.png','comisario_32.png','cupido_32.png','diabla_32.png'],
                 ['director_32.png','dreds_32.png','elsanto_32.png','elvis_32.png','emo_32.png','escafandra_32.png','estilista_32.png','extraterrestre_32.png'],
@@ -24,98 +42,42 @@ allUserIcons = [['afro_32.png','alien_32.png','anciano_32.png','artista_32.png',
                 ['mario_barakus_32.png','mascara_antigua_32.png','metalero_32.png','meteoro_32.png','michelin_32.png','mimo_32.png','mister_32.png','mounstrico1_32.png'],
                 ['mounstrico2_32.png','mounstrico3_32.png','mounstrico4_32.png','mounstruo_32.png','muerte_32.png','mujer_hippie_32.png','mujer_latina_32.png','muneco_lego_32.png']]
 
-deffer = None
-chatter = None
-class UserSession:
-    def __init__(self, id=0, name='Chatter', online=True):
-        self.id = str(id)        
-        self.icon = 'astronauta'
-        self.conversations = list()
-        self.country = None
-        self.online = online
-        self.lastPing = time.time()
-        self.name = name;
-        
-    def setName(self, name):
-        self.name = name
-
-    def setIcon(self, icon):
-        self.icon = icon
-    
-    def toString(self):
-        return ""+self.id+"("+self.name+")"
-
-class Conversation:
-    def __init__(self, id, partner1, partner2):
-        self.id = id
-        self.partner1 = partner1
-        self.partner2 = partner2
-        self.messages=[]
-        
-    def getMyPartner(self, myId):
-        if self.partner1.id==myId:
-            return self.partner2
-        elif self.partner2.id==myId:
-            return self.partner1
-        else:
-            return None
-
-    def getMessagesAfter(self, id):
-        result = list()
-        for msg in self.messages:
-            if msg.id > id:
-                result+=[msg]
-        return result
-
-class Message:
-    def __init__(self, text, userName):
-        global msgIncrement
-        self.text = text
-        self.userName = userName
-        msgIncrement+=1
-        self.id = msgIncrement
-        self.time = timeMillis()
-
-class ComplexEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, Message):
-            return {'text':obj.text, 'userName':obj.userName, 
-                    'id':obj.id, 'time':obj.time}
-        return json.JSONEncoder.default(self, obj)
-
 
 users = dict()
 conversations = list()
+print 'creating new users'
 
-
-deffer = UserSession(id='1', name='Deffer', online=False)
+deffer  = UserSession(id='1', name='Deffer',  online=False)
 chatter = UserSession(id='0', name='Chatter', online=False)
-pluto = UserSession(id='2', name='Pluto', online=True)
-pluto.icon = 'indio'
+pluto   = UserSession(id='2', name='Pluto',   online=True, icon='indio')
+alice   = UserSession(id='3', name='Alice',   online=True, icon='geisha')
 users['']=chatter
 users['0']=chatter
 users['1']=deffer
 users['2']=pluto
+users['3']=alice
 
-increment = 2
-msgIncrement = 2;
-
+def createNewUid():
+    import uuid
+    return str(uuid.uuid4())
 
 def getConversationById(talkid):
     for c in conversations:
         if c.id==talkid:
             return c
             
-def getConversation(partner1, partner2):
-    global increment
+def findConversation(user1, user2):
     global conversations
-    for c in conversations: 
-        if c.partner1.id in [partner1.id, partner2.id] and c.partner2.id in [partner1.id, partner2.id]:
+    for c in conversations:
+        if c.isFor(user1.id, user2.id):
             return c
-    
-    increment+=1
-    c = Conversation(str(increment), users[partner1.id], users[partner2.id])
-    conversations+=[c]
+    return None
+
+def createConversation(userStarted, partner):
+    global conversations
+    c = Conversation(createNewUid(), userStarted, partner)
+    conversations+=[c]    
+    userStarted.conversations+=[c]
     return c
 
 def getConversations(userid):
@@ -126,82 +88,126 @@ def getConversations(userid):
             res.append(c)
     return res
 
-def getNewChanges(user, lastMsgId):
+def getUsersRequestingTalk(user):
     requests = list()
+    cc = getConversations(user.id)
+    for c in cc:
+        if not c in user.conversations:            
+            if (c.partnerRequestsTalk(user)):
+                partner = c.getMyPartner(user.id)
+            #if partner and (partner.online or len(c.messages)):
+                print "Found "+partner.name+" wants to talk to "+user.name
+                requests+=[partner]
+    return requests
+                
+def getNewChanges(user, lastMsgIds, lastTime):    
     messages = dict()
     cc = getConversations(user.id)
     for c in cc:
         if c in user.conversations:
-            msgs = c.getMessagesAfter(lastMsgId);
-            if len(msgs)>0:
-                partner = c.getMyPartner(user.id)
-                print "Found new messages from "+partner.id+"("+partner.name+") to "+user.id+"("+user.name+")"
-                messages[c.id]=msgs
+            if c.id in lastMsgIds:
+                lastMsgId =int(lastMsgIds[c.id]); 
+                msgs = c.getMessagesAfter(lastMsgId);
+                if len(msgs)>0:
+                    partner = c.getMyPartner(user.id)
+                    print "Found new messages from "+partner.name+" to "+user.name
+                    messages[c.id]=msgs
                 '''messages.update(c.id, msgs)'''
-        else:
-            partner = c.getMyPartner(user.id)
-            if partner.online:
-                print "Found "+partner.toString()+" wants to talk to "+user.id+"("+user.name+")"
-                requests+=[partner.id]
-    
-    return {"requests":requests, "messages":messages}
+    result = filterUsers(user, lastTime);
+    return {"requests":result['requests'], "messages":messages, 
+            "userchanges":result['users']}
 
 def getCurrentUser():
     userid = request.COOKIES.get('chatteruserid', '') 
     if not userid or userid=='0':
-        return chatter
-    if not userid in users:
+        return chatter    
+    if not userid in users:        
         user = loadUser(userid)
     else:
         user = users[userid]
     return user
 
 def loadUser(userid):
-    global increment
-    if int(userid)>increment:
-        increment+=1
-    user = UserSession(userid, 'Chatter')        
+    user = dbaccess.loadUser(userid);
+    if not user:
+        print 'creating user for cookie';
+        user = UserSession(userid, 'Chatter')        
     users[userid] = user       
-    print 'loading Chatter ', userid
+    print 'user loaded', user.toString(), 'users ref is', id(users)  
     return user
 
-def makeNewUser():
-    global increment
-    increment+=1
-    userid=str(increment)
+def makeNewUser():    
+    userid=createNewUid()
     user = UserSession(userid, 'Chatter')        
     users[userid] = user       
     response.set_cookie('chatteruserid', userid)
-    print 'creating new Chatter ', userid
+    print 'creating new chatter ', userid
     return user
 
-def timeMillis():
-    return int(time.time() * 1000)
 
-def filterUsers(userid):
+def filterUsers(forUser, since=1):
     ''' simple implementation '''
     
     ''' 1. those onliners matched by filter
-        2. yourself
-        3. me
-        4. TODO conversation partners (that are offline and so not matched in 1.)
+        2. yourself. TODO remove
+        3. me, pluto and alice
+        4. conversation partners (that are offline and thus not matched in 1.)
+        5. users, requesting talks but not matched by filter
     '''
-    result = list()
+    userid = forUser.id;
+    result = list();
+    matchedIds = set()
+    requests = list()
+    
+    '1,2,3 - contact list filter'
     for user in users.values():
         if user.id != '' and user.id !='0':
             if user.id==userid or user.online or user.id=='1' or user.id=='2':
-                result+=[user]
+                if user.lastStatusChange > since:
+                    result+=[user]
+                    matchedIds.add(user.id)
+                
+    '4  -  conversation partners'
+    for c in forUser.conversations:
+        partner = c.getMyPartner(userid);
+        if not partner.id in matchedIds and user.lastStatusChange > since:
+            result+=[partner]
+            matchedIds.add(partner.id)
+    
+    '5  -  requesting talks'
+    for u in getUsersRequestingTalk(forUser):
+        requests += [u.id]
+        if not u.id in matchedIds:
+            result+=[u]
+            matchedIds.add(u.id)
+             
+    return {"users":result, "requests":requests}
+
+def updatedUsers(since, additionalUsers):
+    addit = list(additionalUsers)
+    result = list()    
+    for user in users.values():
+        if user.lastStatusChange > since:
+            result+=[user]
+            if user.id in addit:
+                addit.remove(user.id)
+    for userid in addit:
+        result+=[users[userid]]
         
     return result
-
 
 @route('/')
 @view('main')
 def index():    
-    result = getCurrentUser()
-    return dict(result=result, onliners=filterUsers(result.id), 
-                talks=result.conversations, allIcons=allUserIcons, 
-                lastTime=timeMillis(), lastMsgId = msgIncrement)
+    user = getCurrentUser()
+    print 'creating page for user', user.toString()
+    result = filterUsers(user);
+    response.headers['Cache-Control']='no-cache, must-revalidate'
+    response.headers['Expires']='Sat, 26 Jul 1997 05:00:00 GMT'
+    print users
+    return dict(result=user, onliners=result["users"], 
+                talks=user.conversations, allIcons=allUserIcons, 
+                lastTime=model.timeMillis())
 
 
 @route ('/message.do', method='POST')
@@ -209,67 +215,147 @@ def sendMessage():
     user = getCurrentUser()
     user.lastPing = time.time()
     talkid = request.POST.get('talkid').strip()
-    msgText = request.POST.get('message').strip()
+    msgText = request.POST.get('message').strip()        
     lastIdStr = request.POST.get('lastMsgId')
     print "message from "+user.name+": ", msgText        
     c = getConversationById(talkid)
     if c:
-        message=Message(msgText, user.name) 
+        message=Message(msgText, user) 
         c.messages.append(message)
         result = c.getMessagesAfter(int(lastIdStr))
         
-        ''' if talking to pluto - respond '''
+        ''' if talking to pluto or alice - respond '''
         partner = c.getMyPartner(user.id)
         if partner==pluto:
-            pmessage = Message(msgText+" :)", partner.name)
-            c.messages.append(pmessage)
-        
-        return json.dumps({'newTime':str(timeMillis()), 'newMsgId':message.id, 'messages':result}, cls=ComplexEncoder)
+            if msgText=='printdb':
+                pmessage = Message(dbaccess.printStatus(), pluto)
+                c.messages.append(pmessage)
+            elif msgText=='show error':
+                raise Exception('Artificial exception')              
+            else:
+                pmessage = Message(msgText+" :)", pluto)
+                c.messages.append(pmessage)
+        elif partner==alice:
+            amessage = Message(getAliceBot().respond(msgText, user.id), alice); 
+            c.messages.append(amessage)
+            
+        return json.dumps({'newTime':str(model.timeMillis()),
+                           'messages':result}, cls=model.ComplexEncoder)
     else:
-        return json.dumps({'newTime':str(timeMillis()), 'msg':"conversation is closed"})       
+        return json.dumps({'newTime':str(model.timeMillis()), 'msg':"conversation is closed"})       
+
 
 
 @route ('/ping.do', method='POST')
 def ping():    
-    global msgIncrement
     user = getCurrentUser()
     if user == chatter:
-        return json.dumps({'newTime':str(timeMillis())})
+        return json.dumps({'newTime':str(model.timeMillis())})
     
-    user.lastPing = time.time()    
-    lastIdStr = request.POST.get('lastMsgId')
-    print "request for changes from "+user.id+"("+user.name+")"        
-    changes = getNewChanges(user, int(lastIdStr))       
-    return json.dumps({'newTime':str(timeMillis()), 
-                       'newMsgId':msgIncrement, 
+    req = request.POST.get('gettime')
+    if req:
+        print "returning server time"
+        return json.dumps({'newTime':str(model.timeMillis())})
+    
+    user.lastPing = time.time()        
+    msgIdMap = json.loads(request.POST.get('conversations'))
+    lastTime =  request.POST.get('lastTime')
+    print "request for changes from "+user.name        
+    changes = getNewChanges(user, msgIdMap, int(lastTime))       
+    return json.dumps({'newTime':str(model.timeMillis()),                        
                        'messages':changes['messages'],
-                       'requests':changes['requests']}, cls=ComplexEncoder)
+                       'requests':changes['requests'],
+                       'userchanges':changes['userchanges']}, cls=model.ComplexEncoder)
        
 
 
 @route ('/request.do', method='POST')
 def requestConversation():
-    global msgIncrement
     user = getCurrentUser()
     if user==chatter:
         user=makeNewUser()
     else:
         user.lastPing = time.time()
     partnerid = request.POST.get('partnerid').strip()
-    print 'requesting for', user.id,'(',user.name, ') talk to', partnerid 
+    print 'processing request for', user.toString(), 'talk to', partnerid 
     if partnerid in users:
         partner = users[partnerid]
-        c = getConversation(partner, user)
-        if not c in user.conversations:
-            user.conversations+=[c]
-        if partner.id=='2' and not c in partner.conversations:
-            partner.conversations+=[c]
-        htmlBody = template('conversation', talk=c)
+        c = findConversation(user, partner)
+        if c:
+            if not c.acceptedBy(user.id):
+                'accepting conversation'
+                print 'user', user.name, 'accepts talk to', partner.name
+                c.setAccepted(user.id)
+                user.conversations+=[c]
+                message=Message(model.MSG_ACCEPTED, user, type='s') 
+                c.messages.append(message)
+                
+        else:
+            c = createConversation(user, partner)
+            'automatically accept by pluto'
+            if partner.id=='2' and not c in partner.conversations:
+                partner.conversations+=[c]
+                c.setAccepted(partner.id)
+            
+                        
+        htmlBody = template('conversation', talk=c, partner=partner)        
         return json.dumps({'talkid':c.id, 'myid':user.id, 'html':htmlBody, 
-                           'msgId':msgIncrement, 'time':timeMillis()})
+                           'msgId':c.getLastMsgId(), 'time':model.timeMillis()})
     else:
         return json.dumps({'msg':'User is offline'})
         
+@route ('/decline.do', method='POST')
+def declineConversation():
+    
+    user = getCurrentUser()
+    if user==chatter:
+        user=makeNewUser()
+    else:
+        user.lastPing = time.time()
+    partnerid = request.POST.get('partnerid').strip()
+    print 'processing decline from', user.toString(), 'of', partnerid 
+    if partnerid in users:
+        partner = users[partnerid]
+        c = findConversation(user, partner)
+        if c:
+            message=Message(model.MSG_DECLINED, user, type='s') 
+            c.messages.append(message)
+
+@route ('/close.do', method='POST')
+def closeConversation():
+    user = getCurrentUser()
+    if user==chatter:
+        user=makeNewUser()
+    else:
+        user.lastPing = time.time()
+    talkid = request.POST.get('talkid').strip()
+    c = getConversationById(talkid)
+    if not c:
+        return json.dumps({'msg':'Conversation is already closed'})
+    
+    partner = c.getMyPartner(user.id)    
+    print 'closing conversation of', user.toString(), 'with', partner.name 
+    if not partner.id in users:
+        return json.dumps({'msg':'User is offline'})
+    
+    'close conversation'
+    if c in user.conversations:
+        user.conversations.remove(c)
+    c.setAccepted(user.id, value=False)
+    
+    'update status (to stop blinking on the partner\'s page)'
+    user.lastStatusChange = model.timeMillis();
+    
+    'remove or send close message'        
+    if not c.acceptedBy(partner.id):
+        print 'removing conversation', c.partner1.name,'<-->', c.partner2.name
+        if c in partner.conversations:
+            partner.conversations.remove(c)
+        conversations.remove(c)        
+    else:
+        'send CLOSED system message to partner'
+        message=Message(model.MSG_CLOSED, user, type='s') 
+        c.messages.append(message)
 
 @route ('/username.do', method='POST')
 def setUserName():        
@@ -281,7 +367,9 @@ def setUserName():
             user=makeNewUser() 
         else:
             user.lastPing =time.time()    
-        user.name=inputUserName        
+        user.name=inputUserName
+        print 'saving user to db (1)'
+        dbaccess.saveUserInfo(user);        
         return json.dumps({'myid':user.id})
     else:
         return json.dumps({'msg':"name not set"})
@@ -297,18 +385,19 @@ def setUserIcon():
             user=makeNewUser()
         else:
             user.lastPing = time.time()
-        user.icon = inputIconName
+        user.setIcon(inputIconName)
+        dbaccess.saveUserInfo(user);
         return json.dumps({'myid':user.id})
     else:
         return json.dumps({'msg':"icon not set"})
 
 @route ('/links.html',)
 def staticLinks():
-    send_file("links.html", root='../web/')
+    send_file("links.html", root='web/')
 
 @route('/usericons/:path#.+#')
 def serve_icons(path):
-    return static_file(path, root='../web/icons', mimetype='image/png')
+    return static_file(path, root='web/icons', mimetype='image/png')
  
 ''' Just return scripts '''
 @route('/scripts/:file')
@@ -320,8 +409,13 @@ def serve_resources(file):
     except Exception as e:
         print(e)
             
-    send_file(file, root='../web/') 
+    send_file(file, root='web/') 
+
+if __name__=='__main__':
+    import socket
+    ipaddr = [ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")][0]
+    dbaccess.initDB();
+    run(host=ipaddr, port=8080)
     
-#run(host='10.0.0.171', port=8080)
-run(host='10.3.3.59', port=8080)
+#run(host='10.3.3.59', port=8080)
 #run(host='86.87.205.142', port=8080)

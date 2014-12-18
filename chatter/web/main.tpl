@@ -1,3 +1,4 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -9,24 +10,27 @@
 	</style>
 	<script src="/scripts/jquery-1.4.4.min.js.gz" type="text/javascript"></script>
 	<script src="/scripts/console.js" type="text/javascript"></script>
+	<script src="/scripts/json2.js" type="text/javascript"></script>	
 	<script src="/scripts/chatterobjects.js" type="text/javascript"></script>
 	<script src="/scripts/chatter.js" type="text/javascript"></script>	
 	<script src="/scripts/chatterview.js" type="text/javascript"></script>	
 	<script type="text/javascript">
 		$(document).ready(function() {
+			pingTime();
 			timer=setTimeout('startTime()',5000);
+			contactListElement=$('#contactList')
 		 });
 	
-		currentUser = new User("{{result.id}}", "{{result.icon}}", "{{result.name}}", "{{result.country}}", "result.online")
+		currentUser = new User("{{result.id}}", "{{result.icon}}", "{{result.name}}", "{{result.country}}", "{{result.online}}`")
 		userName = "{{result.name}}"
 		userId = "{{result.id}}"
 							
-		lastTime = {{lastTime}}
-		lastMsgId = {{lastMsgId}}
+		lastTime = {{lastTime}}		
 		timer = null
 		
-		users = []	
+		users = []
 		allicons = []
+		conversations = []
 		
 		%for user in onliners:
 			%if (user.id==result.id):
@@ -43,6 +47,13 @@
 				iconrow.push("{{icon}}")
 			%end
 			allicons.push(iconrow)
+		%end
+		
+		%for talk in talks:
+			%partnerid = talk.getMyPartner(result.id).id
+			var thepartner = getUser("{{partnerid}}");
+			thepartner.status = HAVING_TALK;
+			conversations["{{talk.id}}"] = new Conversation("{{talk.id}}", thepartner, {{talk.getLastMsgId()}})			
 		%end
 	</script>
 </head>
@@ -67,7 +78,8 @@
 	</div>
 	<div id="userNameForm" style="float:left; display:none; width:260px;">
 		<table><tr>
-		<td><input id="userNameInput" type="text"></input></td>		
+		<td><input id="userNameInput" type="text" 
+			onkeydown="if (event.keyCode==13){confirmUserName()} else if (event.keyCode==27){hideUserName()}"></input></td>		
   		<td><div class="buttonimg" style="float:right; height:32px; width:32px; background-image: url(/usericons/actions/Checked.png)" 
   			onclick="confirmUserName()"></div>
   		</td><td>
@@ -95,35 +107,34 @@
 		visibility:hidden;
 	%end
 	min-width:420px;
-	min-height:400px;">
+	min-height:800px;">
+	%partners = list()
 	%for talk in talks:	
-		%include conversation talk=talk,lastTime=lastTime
+		%partner = talk.getMyPartner(result.id)
+		%print "detecting partner", partner.id
+		%partners+=[partner.id]
+		%include conversation talk=talk, partner=partner
 	%end
 	</div>
 </div>
 <div id="body_right" style="width:200px; float:right; background:white; margin-top:20px;">
-	<ul style="list-style-type:none; margin:0px 0px 0px 0px;" id="contactList" >
-		%partners = list()
-		%for talk in talks:
-			%partnerId = talk.getMyPartner(result.id).id
-			%print "detecting partner", partnerId
-			%partners+=[partnerId]
-		%end
+	<ul style="list-style-type:none; margin:0px 0px 0px 0px;" id="contactList" >		
 		%for user in onliners:
-			%marginleft = "0"
+			%tooltip = ''; 
+			%if user.id in partners:
+			%  tooltip = "You have opened conversation with this person"
+			%end
 			%print 'adding to contact list', user.id, '(', user.name,')'
 			<li id="contactListUser{{user.id}}" style="position:relative;"> 
 				<img class="contactlistuser" src="/usericons/32/{{user.icon}}_32.png" 
-				onclick="request_conversation({{user.id}})"/>
+				onclick="requestConversation('{{user.id}}')" title="{{tooltip}}"/>				
 				%if user.id in partners:
-					%marginleft="18"
 					<img class="imguserstatus" src="/usericons/actions/arrow_medium_lower_left.png" 
-					onclick="request_conversation({{user.id}})"/>
+					onclick="requestConversation('{{user.id}}')" title="{{tooltip}}"/>
 				%end
 				%if user.online==False:
-					%marginleft="18"
 					<img class="imguserstatustop" src="/usericons/actions/remove.png" 
-					onclick="request_conversation({{user.id}})"/>
+					onclick="requestConversation('{{user.id}}')"/>
 				%end				
 				
 				<span>{{user.name}}</span>
@@ -136,11 +147,17 @@
 </div>
 
 
-<div id="iconDialog" style="position:absolute; left:500px; top:100px; display:none; background:white; border:1px solid;">
+<div id="iconDialog" style="position:absolute; display:none; background:white; border:1px solid;">
 <table>
 </table>
 </div>
 
+<div id="errorDialog">
+<div id="errorMessageArea"></div>
+<button class="floatright" onclick="$('#errorDialog').hide()">Close</button>
 </div>
+
+</div>
+
 </body>
 </html>
