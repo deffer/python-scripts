@@ -79,6 +79,14 @@ itemsfew = codecs.open("itemsfew.json", "w", "utf-8")
 json.dump(tosavefew, itemsfew)
 itemsfew.close()
 
+# save as csv now
+itemsf = codecs.open("items.csv", "w", "utf-8")
+itemsf.write("itemid|name|groupid|subgroupid|quality|level|price|batchsize|wearable|icon|description|context\n")
+for d in tosave:
+    if "name" in d:
+        itemsf.write("%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s|%s\n" % (d["itemid"], d["name"], d["itemClass"], d["itemSubClass"], d["quality"], d["itemLevel"], d["sellPrice"], d["stackable"], d["equippable"], d["icon"], d["description"], d["context"]))
+
+itemsf.close()
 
 
 print "Auctions - "+str(count)+", items - "+str(len(itemsCache))
